@@ -1,60 +1,58 @@
 import express from 'express';
 import http from 'http';
 import nodemailer from 'nodemailer';
-import { google } from 'googleapis';
+import cors from 'cors';
 import 'dotenv/config';
 
 const app = express();
 const server = http.createServer(app);
-const PORT = 8080;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+const corsOptions = {
+   origin: process.env.CORS_ORIGIN,
+};
 
-const oauth2Client = new google.auth.OAuth2(
-   process.env.CLIENT_ID,
-   process.env.CLIENT_SECRET,
-   process.env.REDIRECT_URL
-);
-oauth2Client.setCredentials({
-   refresh_token: process.env.REFRESH_TOKEN,
-});
+app.use(cors(corsOptions));
+app.post('/mail-server', async (req, res, next) => {
+   const { name, email, message } = req.body;
+   const transporter = nodemailer.createTransport({
+      host: process.env.MAIL_HOST,
+      port: 587,
+      secure: false,
+      auth: {
+         user: process.env.MAIL_USER,
+         pass: process.env.MAIL_PASS,
+      },
+   });
 
-async function sendMail() {
-   try {
-      const accessToken = await oauth2Client.getAccessToken();
-      const transport = nodemailer.createTransport({
-         host: 'smtp.gmail.com',
-         port: 465,
-         secure: true,
-         auth: {
-            type: 'OAuth2',
-            user: process.env.EMAIL_ADDRESS,
-            clientId: process.env.CLIENT_ID,
-            clientSecret: process.env.CLIENT_SECRET,
-            refreshToken: process.env.REFRESH_TOKEN,
-            accessToken: accessToken.token as string,
-         },
-      });
-      const response = await transport.sendMail({
-         to: 'skye6ix@gmail.com',
-         subject: 'Testing Message',
-         text: 'I hope this message find you',
-      });
-      return response;
-   } catch (error) {
-      console.log(error);
-      return error;
-   }
-}
-app.post('/mail-server', (req, res, next) => {
-   sendMail()
-      .then((res) => {
-         console.log(res);
+   await transporter
+      .sendMail({
+         from: process.env.MAIL_FROM,
+         to: process.env.MAIL_TO,
+         subject: 'New Message From Client',
+         html: `
+         <h3>${name}</h3>
+         <br/>
+         <h5>${email}</h5>
+         <br/>
+         <p>${message}</p>
+         `,
+      })
+      .then((response) => {
+         res.json({
+            message: 'Message Sent',
+            status: 'success',
+            serverRes: { response },
+         });
       })
       .catch((err) => {
-         console.log(err);
+         res.json({
+            message: 'Message Sent Failed',
+            status: 'rejected',
+            serverRes: { err },
+         });
       });
 });
-server.listen(PORT, () => {
-   console.log('Server running on port ' + PORT);
+server.listen(process.env.PORT, () => {
+   console.log('Server running on port ' + process.env.PORT);
 });
