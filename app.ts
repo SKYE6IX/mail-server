@@ -24,7 +24,6 @@ app.post('/mail-server', async (req, res, next) => {
          pass: process.env.MAIL_PASS,
       },
    });
-
    await transporter
       .sendMail({
          from: process.env.MAIL_FROM,
@@ -40,14 +39,14 @@ app.post('/mail-server', async (req, res, next) => {
       })
       .then((response) => {
          res.json({
-            message: 'Message Sent',
+            message: 'Message Sent!',
             status: 'success',
             serverRes: { response },
          });
       })
       .catch((err) => {
          res.json({
-            message: 'Message Sent Failed',
+            message: 'Message Sent Failed!, Try Again',
             status: 'rejected',
             serverRes: { err },
          });
